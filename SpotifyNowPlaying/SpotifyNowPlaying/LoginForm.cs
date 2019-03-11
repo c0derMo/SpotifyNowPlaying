@@ -14,27 +14,63 @@ namespace SpotifyNowPlaying
 {
     public partial class LoginForm : Form
     {
-        public LoginForm()
+        public LoginForm(String uri)
         {
             InitializeComponent();
-            /*this.webBrowser1.Url = new System.Uri(loginURI);
-            this.webBrowser1.Update();*/
 
-            InitializeChromium();
+            InitializeChromium(uri);
         }
 
         public ChromiumWebBrowser chromeBrowser;
 
-        public void InitializeChromium()
+        public void InitializeChromium(String uri)
         {
+
             CefSettings settings = new CefSettings();
-            // Initialize cef with the provided settings
-            Cef.Initialize(settings);
+            settings.CachePath = "ChromiumCache/";
+
+            if (!Cef.IsInitialized)
+            {
+                Cef.Initialize(settings);
+            }
             // Create a browser component
-            chromeBrowser = new ChromiumWebBrowser("http://google.com");
-            // Add it to the form and fill it to the form window.
+            chromeBrowser = new ChromiumWebBrowser(uri);
+
+            chromeBrowser.LoadingStateChanged += this.ChromeTextChaned;
+
             this.Controls.Add(chromeBrowser);
             chromeBrowser.Dock = DockStyle.Fill;
+        }
+
+        public void ChromeTextChaned(object sender, LoadingStateChangedEventArgs e)
+        {
+            if(!e.IsLoading)
+            {
+                var task = chromeBrowser.EvaluateScriptAsync("document.getElementsByTagName(\"pre\")[0] != undefined");
+
+                task.ContinueWith(r2 =>
+                {
+                    if(r2.Result.Success)
+                    {
+                        var task2 = chromeBrowser.EvaluateScriptAsync("document.getElementsByTagName(\"pre\")[0].innerHTML == \"OK - This window can be closed now\"");
+
+                        task2.ContinueWith(r =>
+                        {
+                            if (r.Result.Success)
+                            {
+                                try { 
+                                this.Invoke((MethodInvoker)delegate
+                                {
+                                    this.Close();
+                                });
+                                } catch (System.ComponentModel.InvalidAsynchronousStateException)
+                                {
+                                }
+                            }
+                        });
+                    }
+                });
+            }
         }
     }
 }

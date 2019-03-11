@@ -14,43 +14,53 @@ namespace SpotifyNowPlaying
     class Program
     {
         static string clientID = "43ed5ea454214b7d9aadc4e35ec3ebb9";
-        static LoginForm lForm;
+        static NowPlayingInterface npi;
 
         static void Main(string[] args)
         {
             ImplictGrantAuth auth = new ImplictGrantAuth(clientID, "http://localhost:4002", "http://localhost:4002", SpotifyAPI.Web.Enums.Scope.UserReadPlaybackState);
             auth.AuthReceived += async (sender, payload) =>
             {
-                //auth.Stop(); // `sender` is also the auth instance
                 SpotifyWebAPI api = new SpotifyWebAPI() { TokenType = payload.TokenType, AccessToken = payload.AccessToken };
-                //Console.WriteLine("New auth recieved.");
-                // Do requests with API client
-                //Console.WriteLine("Auth expires in: " + payload.ExpiresIn);
+
                 PlaybackContext context = api.GetPlayback();
-                //while(context.StatusCode() != HttpStatusCode.Unauthorized)
-                //{
+                while(context.StatusCode() != HttpStatusCode.Unauthorized)
+                {
                     if (context.Item != null)
                     {
+                        if(npi != null)
+                        {
+                            npi.updateInterface(context.Item.Name, context.Item.Artists[0].Name, context.Item.Album.Images[0].Url);
+                        }
                         Console.Write("NOW PLAYING: ");
                         Console.WriteLine(context.Item.Name);
+                        Console.Write("FROM: ");
+                        Console.WriteLine(context.Item.Artists[0].Name);
+                        Console.Write("IMAGE PIC: ");
+                        Console.WriteLine(context.Item.Album.Images[0].Url);
                     }
                     Thread.Sleep(10000);
                     context = api.GetPlayback();
-                //}
+                }
                 Console.WriteLine("While loop ended.");
                 startAuthentification(auth);
             };
-            auth.Start(); // Starts an internal HTTP Server
+            auth.Start();
+            
+            startAuthentificationWindow(auth);
 
-            //auth.OpenBrowser();
-            startAuthentification(auth);
+            npi = new NowPlayingInterface();
+            npi.ShowDialog();
 
-            while (true)
-            {
-            }
+            //while (true) { }
         }
 
         static void startAuthentification(ImplictGrantAuth auth)
+        {
+            CefSharp.OffScreen.ChromiumWebBrowser browser = new CefSharp.OffScreen.ChromiumWebBrowser(auth.GetUri());
+        }
+
+        static void startAuthentificationWindow(ImplictGrantAuth auth)
         {
             Thread t = new Thread(new ParameterizedThreadStart(subLoginThread));
             t.SetApartmentState(ApartmentState.STA);
@@ -60,11 +70,7 @@ namespace SpotifyNowPlaying
         static void subLoginThread(object auth)
         {
             ImplictGrantAuth aut2 = (ImplictGrantAuth)auth;
-            if(lForm == null) { 
-                lForm = new LoginForm();
-            }
-            lForm.chromeBrowser.Load(aut2.GetUri());
-            lForm.ShowDialog();
+            new LoginForm(aut2.GetUri()).ShowDialog();
         }
     }
 }
