@@ -14,45 +14,83 @@ namespace SpotifyNowPlaying
     class Program
     {
         static string clientID = "43ed5ea454214b7d9aadc4e35ec3ebb9";
-        static NowPlayingInterface npi;
+        public static NowPlayingInterface npi;
+        public static ImplictGrantAuth auth;
+        public static bool logout = false;
 
         static void Main(string[] args)
         {
-            ImplictGrantAuth auth = new ImplictGrantAuth(clientID, "http://localhost:4002", "http://localhost:4002", SpotifyAPI.Web.Enums.Scope.UserReadPlaybackState);
+            auth = new ImplictGrantAuth(clientID, "http://localhost:4002", "http://localhost:4002", SpotifyAPI.Web.Enums.Scope.UserReadPlaybackState);
             auth.AuthReceived += async (sender, payload) =>
             {
                 SpotifyWebAPI api = new SpotifyWebAPI() { TokenType = payload.TokenType, AccessToken = payload.AccessToken };
 
                 PlaybackContext context = api.GetPlayback();
-                while(context.StatusCode() != HttpStatusCode.Unauthorized)
+                while(context.StatusCode() != HttpStatusCode.Unauthorized && !logout)
                 {
                     if (context.Item != null)
                     {
-                        if(npi != null)
+                        String artists = "";
+                        foreach(SimpleArtist artist in context.Item.Artists)
                         {
-                            npi.updateInterface(context.Item.Name, context.Item.Artists[0].Name, context.Item.Album.Images[0].Url);
+                            artists += artist.Name + ", ";
                         }
-                        Console.Write("NOW PLAYING: ");
-                        Console.WriteLine(context.Item.Name);
-                        Console.Write("FROM: ");
-                        Console.WriteLine(context.Item.Artists[0].Name);
-                        Console.Write("IMAGE PIC: ");
-                        Console.WriteLine(context.Item.Album.Images[0].Url);
+                        artists = artists.Substring(0, artists.Length - 2);
+                        String image = "";
+                        if (context.Item.Album.Images.Count > 0) { 
+                            image = context.Item.Album.Images[0].Url;
+                        } else
+                        {
+                            image = "https://cdn1.iconfinder.com/data/icons/ui-glynh-05-of-5/100/UI_Glyph_09_-14-512.png";
+                        }
+                        if (npi != null)
+                        {
+                            npi.updateInterface(context.Item.Name, artists, image);
+                        }
+                        if (OptionManager.outputToTextFile)
+                        {
+                            if(OptionManager.nameFile != "")
+                            {
+                                System.IO.File.WriteAllText(OptionManager.nameFile, context.Item.Name);
+                            }
+                            if (OptionManager.artistsFile != "")
+                            {
+                                System.IO.File.WriteAllText(OptionManager.artistsFile, artists);
+                            }
+                            if (OptionManager.imageFile != "")
+                            {
+                                WebClient client = new WebClient();
+                                client.DownloadFile(image, OptionManager.imageFile);
+                            }
+                        }
                     }
-                    Thread.Sleep(10000);
+                    Thread.Sleep(Decimal.ToInt32(OptionManager.checkInterval));
                     context = api.GetPlayback();
                 }
                 Console.WriteLine("While loop ended.");
-                startAuthentification(auth);
+                if(!logout) { 
+                    startAuthentification(auth);
+                } else
+                {
+                    logout = false;
+                }
             };
             auth.Start();
-            
+
+            if (!System.IO.File.Exists("settings.config"))
+            {
+                OptionManager.createFile();
+                System.Windows.Forms.MessageBox.Show("Use \"Remember me\", or else you'll have to manually log in from the options menu every time!");
+            }
+            else
+            {
+                OptionManager.readFile();
+            }
+
             startAuthentificationWindow(auth);
 
             npi = new NowPlayingInterface();
             npi.ShowDialog();
-
-            //while (true) { }
         }
 
         static void startAuthentification(ImplictGrantAuth auth)
@@ -60,7 +98,7 @@ namespace SpotifyNowPlaying
             CefSharp.OffScreen.ChromiumWebBrowser browser = new CefSharp.OffScreen.ChromiumWebBrowser(auth.GetUri());
         }
 
-        static void startAuthentificationWindow(ImplictGrantAuth auth)
+        public static void startAuthentificationWindow(ImplictGrantAuth auth)
         {
             Thread t = new Thread(new ParameterizedThreadStart(subLoginThread));
             t.SetApartmentState(ApartmentState.STA);
