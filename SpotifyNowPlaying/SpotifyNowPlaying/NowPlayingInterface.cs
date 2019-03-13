@@ -188,5 +188,15 @@ namespace SpotifyNowPlaying
         {
             Application.Exit();
         }
+
+        private void aboutToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            MessageBox.Show("SpotifyNowPlaying v1.0.1\nBy c0derMo");
+        }
+
+        private void bugsToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            System.Diagnostics.Process.Start("https://github.com/c0derMo/SpotifyNowPlaying/issues");
+        }
     }
 }
