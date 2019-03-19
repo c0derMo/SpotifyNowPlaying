@@ -177,7 +177,7 @@ namespace SpotifyNowPlaying
 
         private void optionsToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            if(this.opt == null)
+            if (this.opt == null || this.opt.IsDisposed)
             {
                 this.opt = new Options();
             }
