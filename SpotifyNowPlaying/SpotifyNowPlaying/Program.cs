@@ -51,16 +51,33 @@ namespace SpotifyNowPlaying
                         {
                             if(OptionManager.nameFile != "")
                             {
-                                System.IO.File.WriteAllText(OptionManager.nameFile, context.Item.Name);
+                                try { 
+                                    System.IO.File.WriteAllText(OptionManager.nameFile, context.Item.Name);
+                                } catch (Exception)
+                                {
+
+                                }
                             }
                             if (OptionManager.artistsFile != "")
                             {
-                                System.IO.File.WriteAllText(OptionManager.artistsFile, artists);
+                                try { 
+                                    System.IO.File.WriteAllText(OptionManager.artistsFile, artists);
+                                }
+                                catch (Exception)
+                                {
+
+                                }
                             }
                             if (OptionManager.imageFile != "")
                             {
+                                try { 
                                 WebClient client = new WebClient();
                                 client.DownloadFile(image, OptionManager.imageFile);
+                                }
+                                catch (Exception)
+                                {
+
+                                }
                             }
                         }
                     }
